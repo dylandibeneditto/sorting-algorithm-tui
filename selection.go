@@ -1,87 +1,71 @@
 package main
 
 import (
-    "fmt"
-//    "strings"
-    
+    "github.com/charmbracelet/bubbles/list"
     tea "github.com/charmbracelet/bubbletea"
+    "github.com/charmbracelet/lipgloss"
+)
+var (
+    docStyle = lipgloss.NewStyle().Margin(1, 2)
+
+    titleStyle = lipgloss.NewStyle().
+                    Foreground(lipgloss.Color("#FFFFFF")).
+                    Padding(0, 1)
+
+    selectedTitleStyle = lipgloss.NewStyle().
+                            Border(lipgloss.NormalBorder(), false, false, false, true).
+                            BorderForeground(lipgloss.AdaptiveColor{Light: "#fcba03", Dark: "#fcba03"}).
+                            Foreground(lipgloss.AdaptiveColor{Light: "#fcba03", Dark: "#fcba03"}).
+                            Padding(0, 0, 0, 1)
 )
 
-type model struct {
-    algorithms  []string           // items on the to-do list
-    cursor   int                // which to-do list item our cursor is pointing at
-    selected int
+var items = []list.Item{
+    item{title: "Bubble Sort", time: "O(n^2)"},
 }
 
-func initialModel() model {
-    return model{
-        algorithms: []string{"Bubble Sort", "Bogo Sort"},
-        selected: 0,
-    }
+type item struct {
+    title, time string
+}
+
+func (i item) Title() string       { return i.title }
+func (i item) Description() string { return i.time }
+func (i item) FilterValue() string { return i.title }
+
+type model struct {
+    list list.Model
+}
+
+func NewList() model {
+    d := list.NewDefaultDelegate()
+    d.Styles.SelectedTitle = selectedTitleStyle
+    d.Styles.SelectedDesc = selectedTitleStyle
+    m := model{list: list.New(items, d, 0, 0)}
+    m.list.Title = "Select an Algorithm"
+    m.list.Styles.Title = titleStyle
+    return m
 }
 
 func (m model) Init() tea.Cmd {
-    // Just return `nil`, which means "no I/O right now, please."
     return nil
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     switch msg := msg.(type) {
-
-    // Is it a key press?
     case tea.KeyMsg:
-
-        // Cool, what was the actual key pressed?
-        switch msg.String() {
-
-        // These keys should exit the program.
-        case "ctrl+c", "q":
+        if msg.String() == "ctrl+c" {
             return m, tea.Quit
-
-        // The "up" and "k" keys move the cursor up
-        case "up", "k":
-            if m.cursor > 0 {
-                m.cursor--
-            }
-
-        // The "down" and "j" keys move the cursor down
-        case "down", "j":
-            if m.cursor < len(m.algorithms)-1 {
-                m.cursor++
-            }
-
-        // The "enter" key and the spacebar (a literal space) toggle
-        // the selected state for the item that the cursor is pointing at.
-        case "enter", " ":
-//            algo := m.algorithms[m.selected]
         }
+    case tea.WindowSizeMsg:
+        h, v := docStyle.GetFrameSize()
+        m.list.SetSize(msg.Width-h, msg.Height-v)
     }
 
-    // Return the updated model to the Bubble Tea runtime for processing.
-    // Note that we're not returning a command.
-    return m, nil
+    var cmd tea.Cmd
+    m.list, cmd = m.list.Update(msg)
+    return m, cmd
 }
 
 func (m model) View() string {
-    // The header
-    s := "Select an Algorithm\n\n"
-
-    // Iterate over our algorithms
-    for i, algorithm := range m.algorithms {
-
-        // Is the cursor pointing at this algorithm?
-        cursor := " " // no cursor
-        if m.cursor == i {
-            cursor = ">" // cursor!
-        }
-
-        // Render the row
-        s += fmt.Sprintf("%s %s\n", cursor, algorithm)
-    }
-
-    // The footer
-    s += "\nPress q to quit.\n"
-
-    // Send the UI for rendering
-    return s
+    return docStyle.Render(m.list.View())
 }
+
