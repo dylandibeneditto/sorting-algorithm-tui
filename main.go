@@ -3,15 +3,18 @@ package main
 import (
 	//"fmt"
 	"math/rand"
+	"strconv"
 	"strings"
+	//	"syscall"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/lucasb-eyer/go-colorful"
+	// "golang.org/x/term"
 )
 
-// Define different program states
 type state int
 
 const (
@@ -28,7 +31,6 @@ var (
 				Padding(0, 0, 0, 1)
 )
 
-// Item structure for the list
 type item struct {
 	title string
 	time  string
@@ -69,7 +71,6 @@ func initialModel() model {
 	}
 }
 
-// Bubble Tea update function
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -80,7 +81,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Switch to sorting visualization state
 			m.selectedAlg = m.list.SelectedItem().(item).title
 			m.state = stateSorting
-			m.numbers = generateRandomNumbers(100)
+			w := m.list.Width() - 2
+			m.numbers = generateRandomNumbers(w)
 			m.step = 0
 			return m, tick()
 		}
@@ -111,7 +113,7 @@ func (m model) View() string {
 	case stateList:
 		return docStyle.Render(m.list.View())
 	case stateSorting:
-		return docStyle.Render(visualizeArray(m.numbers))
+		return docStyle.Render(visualizeArray(m.numbers) + "Step: " + strconv.Itoa(m.step))
 	}
 	return "Unknown state"
 }
@@ -167,7 +169,12 @@ func visualizeArray(arr []int) string {
 						c = "▇"
 					}
 				}
-				s := lipgloss.NewStyle().SetString(c).Foreground(lipgloss.Color("#0000FF"))
+				hue := float64(val) / float64(maxHeight+1) * 360.0 // Varies hue from 0 to 360
+				color := colorful.Hsv(hue, 1.0, 1.0)               // Full saturation and brightness
+
+				// Convert to HEX for lipgloss
+				colorHex := color.Hex()
+				s := lipgloss.NewStyle().SetString(c).Foreground(lipgloss.Color(colorHex))
 				doc.WriteString(s.String()) // Block for value
 			} else {
 				doc.WriteString(" ") // Empty space
